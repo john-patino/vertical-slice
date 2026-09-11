@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Entorno
+.env
+.env.local
+
+# Editores
+.idea/
+*.swp
+.DS_Store

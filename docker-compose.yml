@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vsa-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vsa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vsa_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-catalogo}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # Sin este healthcheck la API gana la carrera de arranque y falla por
+    # conexión rechazada. Es el primer tropiezo clásico al levantar el demo.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vsa} -d ${POSTGRES_DB:-catalogo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: vsa-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__Default: >-
+        Host=db;Port=5432;Database=${POSTGRES_DB:-catalogo};Username=${POSTGRES_USER:-vsa};Password=${POSTGRES_PASSWORD:-vsa_dev_password}
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: vsa-web
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:5000
+    ports:
+      - "5173:5173"
+    volumes:
+      # Código montado para hot reload; node_modules queda en el contenedor
+      # para no pisar la instalación de Linux con la del anfitrión.
+      - ./apps/frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
