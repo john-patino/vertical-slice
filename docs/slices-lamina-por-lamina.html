@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vertical Slice · Lámina por slice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --ink:      #16202E;
+    --muted:    #64748B;
+    --faint:    #94A3B8;
+    --line:     #E2E8F0;
+    --canvas:   #EEF1F6;
+    --surface:  #FFFFFF;
+    --accent:   #2563EB;
+    --accent-soft: #DBEAFE;
+  }
+
+  html, body { margin: 0; padding: 0; height: 100%; }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Mazo ---------- */
+  .mazo {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+  }
+  .lamina {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(28px, 4vh, 56px) clamp(24px, 5vw, 88px) clamp(24px, 3vh, 40px);
+  }
+
+  /* ---------- Encabezado de lámina ---------- */
+  .cabecera {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    border-bottom: 3px solid var(--accent);
+  }
+  .indice {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(13px, 1.5vw, 17px);
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 12px;
+    border-radius: 7px;
+  }
+  .titulo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(28px, 4.2vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+    line-height: 1;
+  }
+  .ruta {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(12px, 1.35vw, 17px);
+    font-weight: 500;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .ruta b { font-weight: 700; }
+
+  /* ---------- Cuerpo ---------- */
+  .cuerpo {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(290px, 1fr) minmax(290px, 1fr);
+    gap: clamp(24px, 4vw, 64px);
+    padding-top: clamp(20px, 3.5vh, 44px);
+    /* Centrado: reparte el espacio sobrante arriba y abajo en lugar de
+       dejar una franja muerta entre el contenido y la lección. */
+    align-content: center;
+  }
+
+  .rotulo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(9px, 1.05vw, 13px);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 12px;
+  }
+
+  /* ---------- Pila de archivos ---------- */
+  .archivos { display: flex; flex-direction: column; gap: clamp(6px, 0.9vh, 11px); }
+  .archivo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 9px;
+    padding: clamp(9px, 1.9vh, 20px) clamp(16px, 1.5vw, 22px);
+  }
+  .archivo .nombre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(12px, 1.25vw, 19px);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .archivo .rol {
+    font-size: clamp(11px, 1.05vw, 15px);
+    color: var(--muted);
+    margin-left: auto;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .archivo .lineas {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(10px, 1.15vw, 14px);
+    color: var(--faint);
+    min-width: 48px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(11px, 1.3vw, 16px);
+    color: var(--muted);
+  }
+  .total b {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(18px, 2.7vw, 34px);
+    color: var(--accent);
+  }
+
+  /* ---------- Recorrido ---------- */
+  .pasos { display: flex; flex-direction: column; gap: 0; }
+  .paso { display: grid; grid-template-columns: 22px 1fr; gap: 14px; }
+  .carril { display: flex; flex-direction: column; align-items: center; }
+  .punto {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--accent); margin-top: 6px; flex-shrink: 0;
+  }
+  .hilo { width: 2px; flex: 1; background: var(--line); min-height: 14px; }
+  .paso:last-child .hilo { display: none; }
+  .paso .texto { padding-bottom: clamp(12px, 2.6vh, 30px); }
+  .paso .que {
+    font-weight: 600;
+    font-size: clamp(13px, 1.6vw, 20px);
+    margin: 0 0 3px;
+  }
+  .paso .detalle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(11px, 1.25vw, 16px);
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  /* ---------- Lección ---------- */
+  .leccion {
+    padding-top: clamp(16px, 2.5vh, 28px);
+    display: grid;
+    grid-template-columns: minmax(290px, 1fr) minmax(290px, 1fr);
+    gap: clamp(24px, 4vw, 64px);
+    align-items: end;
+  }
+  .ensena {
+    background: var(--accent-soft);
+    border-radius: 11px;
+    padding: clamp(14px, 2.4vh, 26px) clamp(16px, 2vw, 30px);
+  }
+  .ensena p {
+    margin: 0;
+    font-size: clamp(13px, 1.6vw, 21px);
+    line-height: 1.5;
+  }
+  .ensena strong { font-weight: 600; }
+  .espejo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(10px, 1.2vw, 15px);
+    color: var(--muted);
+    line-height: 1.75;
+  }
+  .espejo span { color: var(--faint); }
+
+  /* ---------- Portada ---------- */
+  .portada { justify-content: center; }
+  .portada h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(34px, 6vw, 76px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    margin: 0 0 16px;
+    max-width: 16ch;
+  }
+  .portada .bajada {
+    font-size: clamp(15px, 1.8vw, 21px);
+    color: var(--muted);
+    max-width: 56ch;
+    line-height: 1.55;
+    margin: 0 0 clamp(28px, 5vh, 52px);
+  }
+  .fila-slices {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: clamp(20px, 3vh, 32px);
+  }
+  .mini {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--c);
+    border-radius: 10px;
+    padding: clamp(12px, 1.8vh, 18px) 14px;
+  }
+  .mini .n {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(14px, 1.6vw, 19px);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .mini .d {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(10px, 1vw, 12px);
+    color: var(--muted);
+    display: block;
+    line-height: 1.6;
+  }
+  .mini .big {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(22px, 3vw, 34px);
+    font-weight: 700;
+    color: var(--c);
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .nota-portada {
+    font-size: clamp(12px, 1.3vw, 15px);
+    color: var(--muted);
+    border-left: 3px solid var(--line);
+    padding-left: 16px;
+    line-height: 1.6;
+    max-width: 70ch;
+  }
+
+  /* ---------- Cierre ---------- */
+  .cierre-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: clamp(12px, 1.35vw, 16px);
+  }
+  .cierre-tabla th {
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(9px, 1vw, 11px);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding: 0 14px 10px 0;
+    border-bottom: 2px solid var(--line);
+  }
+  .cierre-tabla td {
+    padding: clamp(9px, 1.5vh, 14px) 14px clamp(9px, 1.5vh, 14px) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .cierre-tabla td:first-child { font-weight: 600; }
+  .cierre-tabla .num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    color: var(--muted);
+  }
+  .cierre-tabla .si { color: #059669; font-weight: 600; }
+  .cierre-tabla .no { color: var(--faint); }
+  .cierre-tabla tfoot td {
+    border-bottom: none;
+    border-top: 2px solid var(--ink);
+    font-weight: 700;
+    padding-top: 12px;
+  }
+  .remate {
+    margin-top: clamp(20px, 3vh, 36px);
+    font-size: clamp(14px, 1.7vw, 20px);
+    line-height: 1.55;
+    max-width: 62ch;
+  }
+  .remate code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 2px 7px;
+  }
+
+  /* ---------- Navegación ---------- */
+  .rail {
+    position: fixed;
+    right: clamp(10px, 1.6vw, 22px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+  }
+  .rail button {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 2px solid var(--faint);
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .rail button:hover { border-color: var(--ink); transform: scale(1.25); }
+  .rail button[aria-current="true"] {
+    background: var(--rc, var(--ink));
+    border-color: var(--rc, var(--ink));
+    transform: scale(1.35);
+  }
+  .rail button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  .pie {
+    position: fixed;
+    left: clamp(24px, 5vw, 88px);
+    bottom: clamp(12px, 1.8vh, 20px);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(9px, 1vw, 11px);
+    color: var(--faint);
+    letter-spacing: 0.06em;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @media (max-width: 900px) {
+    .cuerpo, .leccion { grid-template-columns: 1fr; }
+    .leccion { gap: 18px; }
+    .fila-slices { grid-template-columns: repeat(2, 1fr); }
+    .lamina { min-height: auto; padding-bottom: 56px; }
+    .mazo { scroll-snap-type: none; }
+    .rail { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mazo { scroll-behavior: auto; }
+    * { transition-duration: .01ms !important; }
+  }
+
+  @media print {
+    .rail, .pie { display: none; }
+    .mazo { height: auto; overflow: visible; }
+    .lamina { page-break-after: always; min-height: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="mazo" id="mazo">
+
+  <!-- ================= PORTADA ================= -->
+  <section class="lamina portada" data-color="#16202E" data-nombre="Portada">
+    <h1>Cinco slices, cinco carpetas</h1>
+    <p class="bajada">
+      Cada caso de uso del catálogo vive entero en una carpeta: su petición, su respuesta,
+      su validación, su lógica y su acceso a datos. Nada de esto está repartido en capas.
+    </p>
+
+    <div class="fila-slices">
+      <div class="mini" style="--c:#2563EB"><span class="big">4</span><span class="n">ListProducts</span><span class="d">83 líneas</span></div>
+      <div class="mini" style="--c:#7C3AED"><span class="big">4</span><span class="n">GetProductById</span><span class="d">73 líneas</span></div>
+      <div class="mini" style="--c:#059669"><span class="big">5</span><span class="n">CreateProduct</span><span class="d">110 líneas</span></div>
+      <div class="mini" style="--c:#D97706"><span class="big">5</span><span class="n">UpdateProductStock</span><span class="d">100 líneas</span></div>
+      <div class="mini" style="--c:#DC2626"><span class="big">3</span><span class="n">DeleteProduct</span><span class="d">56 líneas</span></div>
+    </div>
+
+    <p class="nota-portada">
+      El número grande es la cantidad de archivos. Que no sea el mismo en los cinco casos
+      es el punto: cada slice tiene exactamente lo que necesita, ni un archivo más.
+    </p>
+  </section>
+
+  <!-- ================= 1 · ListProducts ================= -->
+  <section class="lamina" data-color="#2563EB" data-soft="#DBEAFE" data-nombre="ListProducts">
+    <header class="cabecera">
+      <span class="indice">01</span>
+      <h2 class="titulo">ListProducts</h2>
+      <span class="ruta"><b>GET</b> /api/products</span>
+    </header>
+
+    <div class="cuerpo">
+      <div>
+        <p class="rotulo">Archivos del slice</p>
+        <div class="archivos">
+          <div class="archivo"><span class="nombre">ListProductsRequest.cs</span><span class="rol">filtros opcionales</span><span class="lineas">7</span></div>
+          <div class="archivo"><span class="nombre">ListProductsResponse.cs</span><span class="rol">DTO del listado</span><span class="lineas">18</span></div>
+          <div class="archivo"><span class="nombre">ListProductsHandler.cs</span><span class="rol">consulta y proyecta</span><span class="lineas">41</span></div>
+          <div class="archivo"><span class="nombre">ListProductsEndpoint.cs</span><span class="rol">registra su ruta</span><span class="lineas">17</span></div>
+        </div>
+        <div class="total"><span>sin validador · 4 archivos</span><b>83 líneas</b></div>
+      </div>
+
+      <div>
+        <p class="rotulo">El recorrido</p>
+        <div class="pasos">
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Entra la petición</p><p class="detalle">?categoria= y ?buscar= llegan como filtros opcionales</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El handler consulta</p><p class="detalle">db.Products con ILIKE + unaccent() — sin repositorio</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Proyecta al DTO propio</p><p class="detalle">.Select(p =&gt; new ListProductsResponse(...))</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span></div>
+            <div class="texto"><p class="que">Responde</p><p class="detalle">200 OK · arreglo vacío si no hay nada, nunca 404</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="leccion">
+      <div class="ensena"><p><strong>No tiene validador</strong> porque sus dos entradas son opcionales. No se crea un archivo vacío para cumplir una plantilla.</p></div>
+      <div class="espejo"><span>frontend ·</span> useProducts.ts · ProductCatalogPage.tsx<br><span>&nbsp;</span> ProductCard.tsx · CatalogFilters.tsx</div>
+    </div>
+  </section>
+
+  <!-- ================= 2 · GetProductById ================= -->
+  <section class="lamina" data-color="#7C3AED" data-soft="#EDE9FE" data-nombre="GetProductById">
+    <header class="cabecera">
+      <span class="indice">02</span>
+      <h2 class="titulo">GetProductById</h2>
+      <span class="ruta"><b>GET</b> /api/products/{id}</span>
+    </header>
+
+    <div class="cuerpo">
+      <div>
+        <p class="rotulo">Archivos del slice</p>
+        <div class="archivos">
+          <div class="archivo"><span class="nombre">GetProductByIdRequest.cs</span><span class="rol">solo el id</span><span class="lineas">5</span></div>
+          <div class="archivo"><span class="nombre">GetProductByIdResponse.cs</span><span class="rol">DTO del detalle</span><span class="lineas">18</span></div>
+          <div class="archivo"><span class="nombre">GetProductByIdHandler.cs</span><span class="rol">consulta o lanza 404</span><span class="lineas">24</span></div>
+          <div class="archivo"><span class="nombre">GetProductByIdEndpoint.cs</span><span class="rol">ruta y parseo del GUID</span><span class="lineas">26</span></div>
+        </div>
+        <div class="total"><span>sin validador · 4 archivos</span><b>73 líneas</b></div>
+      </div>
+
+      <div>
+        <p class="rotulo">El recorrido</p>
+        <div class="pasos">
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Entra el identificador</p><p class="detalle">si no es un GUID válido → 400, sin tocar la base</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El handler busca</p><p class="detalle">FirstOrDefaultAsync sobre db.Products</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Si no existe, lanza</p><p class="detalle">NotFoundException → 404 con ProblemDetails</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span></div>
+            <div class="texto"><p class="que">Responde</p><p class="detalle">200 OK con el detalle completo</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="leccion">
+      <div class="ensena"><p>Su DTO tiene <strong>los mismos campos</strong> que el de ListProducts y aun así vive aparte. Duplicar la forma de los datos es barato; acoplar casos de uso es caro.</p></div>
+      <div class="espejo"><span>frontend ·</span> useProduct.ts · ProductDetailModal.tsx<br><span>&nbsp;</span> hace su propia petición, no reusa el catálogo</div>
+    </div>
+  </section>
+
+  <!-- ================= 3 · CreateProduct ================= -->
+  <section class="lamina" data-color="#059669" data-soft="#D1FAE5" data-nombre="CreateProduct">
+    <header class="cabecera">
+      <span class="indice">03</span>
+      <h2 class="titulo">CreateProduct</h2>
+      <span class="ruta"><b>POST</b> /api/products</span>
+    </header>
+
+    <div class="cuerpo">
+      <div>
+        <p class="rotulo">Archivos del slice</p>
+        <div class="archivos">
+          <div class="archivo"><span class="nombre">CreateProductRequest.cs</span><span class="rol">datos del alta</span><span class="lineas">11</span></div>
+          <div class="archivo"><span class="nombre">CreateProductResponse.cs</span><span class="rol">Id, Nombre, Sku</span><span class="lineas">4</span></div>
+          <div class="archivo"><span class="nombre">CreateProductValidator.cs</span><span class="rol">6 reglas de entrada</span><span class="lineas">36</span></div>
+          <div class="archivo"><span class="nombre">CreateProductHandler.cs</span><span class="rol">SKU único y persiste</span><span class="lineas">40</span></div>
+          <div class="archivo"><span class="nombre">CreateProductEndpoint.cs</span><span class="rol">201 + Location</span><span class="lineas">19</span></div>
+        </div>
+        <div class="total"><span>el slice completo · 5 archivos</span><b>110 líneas</b></div>
+      </div>
+
+      <div>
+        <p class="rotulo">El recorrido</p>
+        <div class="pasos">
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Entra el cuerpo JSON</p><p class="detalle">nombre, sku, categoria, precio, stock, descripcion</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El validador del slice actúa</p><p class="detalle">400 con un error por campo · el handler ni se ejecuta</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El handler comprueba el SKU</p><p class="detalle">si ya existe → ConflictException → 409</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span></div>
+            <div class="texto"><p class="que">Persiste y responde</p><p class="detalle">201 Created + cabecera Location</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="leccion">
+      <div class="ensena"><p>La respuesta devuelve <strong>menos campos que la entrada</strong>. Cada DTO lleva solo lo que su caso de uso necesita, no un molde compartido.</p></div>
+      <div class="espejo"><span>frontend ·</span> useCreateProduct.ts · validation.ts<br><span>&nbsp;</span> CreateProductModal.tsx</div>
+    </div>
+  </section>
+
+  <!-- ================= 4 · UpdateProductStock ================= -->
+  <section class="lamina" data-color="#D97706" data-soft="#FEF3C7" data-nombre="UpdateProductStock">
+    <header class="cabecera">
+      <span class="indice">04</span>
+      <h2 class="titulo">UpdateProductStock</h2>
+      <span class="ruta"><b>PATCH</b> /api/products/{id}/stock</span>
+    </header>
+
+    <div class="cuerpo">
+      <div>
+        <p class="rotulo">Archivos del slice</p>
+        <div class="archivos">
+          <div class="archivo"><span class="nombre">UpdateProductStockRequest.cs</span><span class="rol">ajuste con signo</span><span class="lineas">13</span></div>
+          <div class="archivo"><span class="nombre">UpdateProductStockResponse.cs</span><span class="rol">stock antes y después</span><span class="lineas">7</span></div>
+          <div class="archivo"><span class="nombre">UpdateProductStockValidator.cs</span><span class="rol">ajuste ≠ 0</span><span class="lineas">12</span></div>
+          <div class="archivo"><span class="nombre">UpdateProductStockHandler.cs</span><span class="rol">regla de stock</span><span class="lineas">36</span></div>
+          <div class="archivo"><span class="nombre">UpdateProductStockEndpoint.cs</span><span class="rol">ruta anidada</span><span class="lineas">32</span></div>
+        </div>
+        <div class="total"><span>con regla de negocio · 5 archivos</span><b>100 líneas</b></div>
+      </div>
+
+      <div>
+        <p class="rotulo">El recorrido</p>
+        <div class="pasos">
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Entra un movimiento</p><p class="detalle">{ "ajuste": -4 } · negativo es salida, positivo entrada</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El validador rechaza el cero</p><p class="detalle">400 · un ajuste de cero no es un movimiento</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El handler aplica la regla</p><p class="detalle">si el resultado sería negativo → 422, stock intacto</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span></div>
+            <div class="texto"><p class="que">Responde</p><p class="detalle">200 OK con stockAnterior y stockNuevo</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="leccion">
+      <div class="ensena"><p>La regla de stock no negativo vive <strong>en este handler</strong>, no en la entidad compartida: es la única operación del sistema que puede violarla.</p></div>
+      <div class="espejo"><span>frontend ·</span> useUpdateStock.ts · StockAdjustmentPage.tsx</div>
+    </div>
+  </section>
+
+  <!-- ================= 5 · DeleteProduct ================= -->
+  <section class="lamina" data-color="#DC2626" data-soft="#FEE2E2" data-nombre="DeleteProduct">
+    <header class="cabecera">
+      <span class="indice">05</span>
+      <h2 class="titulo">DeleteProduct</h2>
+      <span class="ruta"><b>DELETE</b> /api/products/{id}</span>
+    </header>
+
+    <div class="cuerpo">
+      <div>
+        <p class="rotulo">Archivos del slice</p>
+        <div class="archivos">
+          <div class="archivo"><span class="nombre">DeleteProductRequest.cs</span><span class="rol">solo el id</span><span class="lineas">5</span></div>
+          <div class="archivo"><span class="nombre">DeleteProductHandler.cs</span><span class="rol">busca y elimina</span><span class="lineas">24</span></div>
+          <div class="archivo"><span class="nombre">DeleteProductEndpoint.cs</span><span class="rol">204 No Content</span><span class="lineas">27</span></div>
+        </div>
+        <div class="total"><span>el más pequeño · 3 archivos</span><b>56 líneas</b></div>
+      </div>
+
+      <div>
+        <p class="rotulo">El recorrido</p>
+        <div class="pasos">
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">Entra el identificador</p><p class="detalle">nada más — por eso no hay validador</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span><span class="hilo"></span></div>
+            <div class="texto"><p class="que">El handler busca</p><p class="detalle">si no existe → NotFoundException → 404</p></div></div>
+          <div class="paso"><div class="carril"><span class="punto"></span></div>
+            <div class="texto"><p class="que">Elimina y responde</p><p class="detalle">204 No Content — por eso tampoco hay DTO de salida</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="leccion">
+      <div class="ensena"><p><strong>Tres archivos, no cinco.</strong> Sin DTO de respuesta porque devuelve 204; sin validador porque su única entrada es un id. La asimetría es la evidencia.</p></div>
+      <div class="espejo"><span>frontend ·</span> useDeleteProduct.ts · DeleteProductButton.tsx</div>
+    </div>
+  </section>
+
+  <!-- ================= CIERRE ================= -->
+  <section class="lamina" data-color="#16202E" data-soft="#E2E8F0" data-nombre="Cierre">
+    <header class="cabecera">
+      <span class="indice">06</span>
+      <h2 class="titulo">Los cinco, lado a lado</h2>
+    </header>
+
+    <div style="padding-top:clamp(20px,3.5vh,44px)">
+      <table class="cierre-tabla">
+        <thead>
+          <tr><th>Slice</th><th>Endpoint</th><th class="num">Archivos</th><th class="num">Líneas</th><th>Validador</th><th>DTO salida</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="color:#2563EB">ListProducts</td><td><code>GET /api/products</code></td><td class="num">4</td><td class="num">83</td><td class="no">—</td><td class="si">sí</td></tr>
+          <tr><td style="color:#7C3AED">GetProductById</td><td><code>GET /api/products/{id}</code></td><td class="num">4</td><td class="num">73</td><td class="no">—</td><td class="si">sí</td></tr>
+          <tr><td style="color:#059669">CreateProduct</td><td><code>POST /api/products</code></td><td class="num">5</td><td class="num">110</td><td class="si">sí</td><td class="si">sí</td></tr>
+          <tr><td style="color:#D97706">UpdateProductStock</td><td><code>PATCH .../{id}/stock</code></td><td class="num">5</td><td class="num">100</td><td class="si">sí</td><td class="si">sí</td></tr>
+          <tr><td style="color:#DC2626">DeleteProduct</td><td><code>DELETE /api/products/{id}</code></td><td class="num">3</td><td class="num">56</td><td class="no">—</td><td class="no">—</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>Total</td><td></td><td class="num">21</td><td class="num">422</td><td></td><td></td></tr>
+        </tfoot>
+      </table>
+
+      <p class="remate">
+        422 líneas para los cinco casos de uso completos, acceso a datos incluido.
+        Las columnas vacías son el mensaje: cada slice tiene exactamente lo que necesita.
+        Compruébalo con <code>rm -rf Features/GetProductById &amp;&amp; dotnet build</code> —
+        compila, y su ruta desaparece sola.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<nav class="rail" id="rail" aria-label="Navegación entre láminas"></nav>
+<div class="pie" id="pie"></div>
+
+<script>
+(function () {
+  var mazo = document.getElementById('mazo');
+  var laminas = Array.prototype.slice.call(document.querySelectorAll('.lamina'));
+  var rail = document.getElementById('rail');
+  var pie = document.getElementById('pie');
+  var actual = 0;
+
+  laminas.forEach(function (lam, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', lam.dataset.nombre);
+    b.style.setProperty('--rc', lam.dataset.color);
+    b.addEventListener('click', function () { irA(i); });
+    rail.appendChild(b);
+  });
+
+  function pintar(i) {
+    var lam = laminas[i];
+    var color = lam.dataset.color || '#16202E';
+    var soft = lam.dataset.soft || '#E2E8F0';
+    document.documentElement.style.setProperty('--accent', color);
+    document.documentElement.style.setProperty('--accent-soft', soft);
+    Array.prototype.forEach.call(rail.children, function (b, j) {
+      b.setAttribute('aria-current', j === i ? 'true' : 'false');
+    });
+    pie.textContent = lam.dataset.nombre + '  ·  ' + (i + 1) + ' / ' + laminas.length +
+                      '  ·  usa ← → para navegar';
+  }
+
+  function irA(i) {
+    i = Math.max(0, Math.min(laminas.length - 1, i));
+    laminas[i].scrollIntoView({ block: 'start' });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (e) {
+        if (e.isIntersecting) {
+          actual = laminas.indexOf(e.target);
+          pintar(actual);
+        }
+      });
+    }, { root: mazo, threshold: 0.55 });
+    laminas.forEach(function (l) { obs.observe(l); });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); irA(actual + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); irA(actual - 1); }
+    if (e.key === 'Home') { e.preventDefault(); irA(0); }
+    if (e.key === 'End') { e.preventDefault(); irA(laminas.length - 1); }
+  });
+
+  pintar(0);
+})();
+</script>
+
+</body>
+</html>

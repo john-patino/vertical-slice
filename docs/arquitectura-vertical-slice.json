@@ -1,0 +1,404 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Arquitectura Vertical Slice · Catálogo de productos",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1280,
+      680
+    ],
+    "repository": {
+      "url": "https://github.com/john-patino/vertical-slice",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "67b5f0200d977e9a9efb0545cf2968349fc79128"
+    },
+    "views": [
+      {
+        "id": "un-slice-completo",
+        "label": "Un slice completo",
+        "focus": [
+          "cliente",
+          "createProduct",
+          "dbcontext",
+          "postgres"
+        ],
+        "note": "CreateProduct atraviesa por sí solo todas las capas técnicas: 110 líneas en 5 archivos."
+      },
+      {
+        "id": "los-cinco-slices",
+        "label": "Los cinco slices",
+        "focus": [
+          "listProducts",
+          "getProductById",
+          "createProduct",
+          "updateProductStock",
+          "deleteProduct"
+        ],
+        "note": "Cada carpeta es independiente: borrarla no rompe a las demás."
+      },
+      {
+        "id": "lo-compartido",
+        "label": "Lo compartido",
+        "focus": [
+          "common",
+          "dbcontext",
+          "product",
+          "postgres"
+        ],
+        "note": "Solo infraestructura: pipeline técnico, esquema y entidad persistida."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "cliente",
+      "type": "frontend",
+      "label": "Cliente React",
+      "sublabel": "Vite · cinco carpetas espejo",
+      "tag": "src/features/",
+      "pos": [
+        536,
+        30
+      ],
+      "size": [
+        210,
+        56
+      ]
+    },
+    {
+      "id": "common",
+      "type": "cloud",
+      "label": "Common/ · pipeline de MediatR",
+      "sublabel": "ValidationBehavior · ExceptionHandler · IEndpoint",
+      "tag": "compartido · transversal",
+      "pos": [
+        60,
+        136
+      ],
+      "size": [
+        1162,
+        58
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Common/ValidationBehavior.cs",
+          "label": "Valida antes del handler"
+        },
+        {
+          "path": "apps/backend/Common/ExceptionHandler.cs",
+          "label": "Excepciones a ProblemDetails"
+        }
+      ]
+    },
+    {
+      "id": "listProducts",
+      "type": "backend",
+      "label": "ListProducts",
+      "sublabel": "4 archivos · sin validador",
+      "tag": "GET /api/products",
+      "pos": [
+        60,
+        268
+      ],
+      "size": [
+        210,
+        92
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Features/ListProducts/ListProductsHandler.cs",
+          "label": "Consulta con filtros propios"
+        }
+      ]
+    },
+    {
+      "id": "getProductById",
+      "type": "backend",
+      "label": "GetProductById",
+      "sublabel": "4 archivos · DTO propio",
+      "tag": "GET /api/products/{id}",
+      "pos": [
+        298,
+        268
+      ],
+      "size": [
+        210,
+        92
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Features/GetProductById/GetProductByIdResponse.cs",
+          "label": "DTO propio, duplicado a propósito"
+        }
+      ]
+    },
+    {
+      "id": "createProduct",
+      "type": "backend",
+      "label": "CreateProduct",
+      "sublabel": "5 archivos · con validador",
+      "tag": "POST /api/products",
+      "pos": [
+        536,
+        268
+      ],
+      "size": [
+        210,
+        92
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Features/CreateProduct/CreateProductHandler.cs",
+          "label": "SKU único, 409 al repetir"
+        },
+        {
+          "path": "apps/backend/Features/CreateProduct/CreateProductValidator.cs",
+          "label": "Reglas de entrada del slice"
+        }
+      ]
+    },
+    {
+      "id": "updateProductStock",
+      "type": "backend",
+      "label": "UpdateProductStock",
+      "sublabel": "5 archivos · con validador",
+      "tag": "PATCH .../{id}/stock",
+      "pos": [
+        774,
+        268
+      ],
+      "size": [
+        210,
+        92
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Features/UpdateProductStock/UpdateProductStockHandler.cs",
+          "label": "Regla de stock no negativo"
+        }
+      ]
+    },
+    {
+      "id": "deleteProduct",
+      "type": "backend",
+      "label": "DeleteProduct",
+      "sublabel": "3 archivos · el más pequeño",
+      "tag": "DELETE /api/products/{id}",
+      "pos": [
+        1012,
+        268
+      ],
+      "size": [
+        210,
+        92
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Features/DeleteProduct/DeleteProductHandler.cs",
+          "label": "Sin DTO ni validador: 3 archivos"
+        }
+      ]
+    },
+    {
+      "id": "dbcontext",
+      "type": "database",
+      "label": "AppDbContext",
+      "sublabel": "EF Core · los handlers consultan aquí sin repositorio",
+      "tag": "Persistence/",
+      "pos": [
+        60,
+        432
+      ],
+      "size": [
+        1162,
+        66
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Persistence/AppDbContext.cs",
+          "label": "Esquema y mapeo"
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "type": "database",
+      "label": "Product",
+      "sublabel": "Entidad única, deliberadamente anémica",
+      "tag": "Domain/",
+      "pos": [
+        200,
+        570
+      ],
+      "size": [
+        320,
+        60
+      ],
+      "sources": [
+        {
+          "path": "apps/backend/Domain/Product.cs",
+          "label": "Una entidad, muchos DTOs"
+        }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL 16",
+      "sublabel": "Docker · un solo esquema",
+      "tag": ":5432",
+      "pos": [
+        762,
+        570
+      ],
+      "size": [
+        320,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Features/ — una carpeta por caso de uso, eliminable por separado",
+      "wraps": [
+        "listProducts",
+        "getProductById",
+        "createProduct",
+        "updateProductStock",
+        "deleteProduct"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "cliente-api",
+      "from": "cliente",
+      "to": "common",
+      "label": "peticiones REST",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "common-list",
+      "from": "common",
+      "to": "listProducts",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "common-detalle",
+      "from": "common",
+      "to": "getProductById",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "common-crear",
+      "from": "common",
+      "to": "createProduct",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "common-stock",
+      "from": "common",
+      "to": "updateProductStock",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "common-borrar",
+      "from": "common",
+      "to": "deleteProduct",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "list-db",
+      "from": "listProducts",
+      "to": "dbcontext",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "detalle-db",
+      "from": "getProductById",
+      "to": "dbcontext",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "crear-db",
+      "from": "createProduct",
+      "to": "dbcontext",
+      "label": "el handler consulta directo",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "stock-db",
+      "from": "updateProductStock",
+      "to": "dbcontext",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "borrar-db",
+      "from": "deleteProduct",
+      "to": "dbcontext",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "db-entidad",
+      "from": "dbcontext",
+      "to": "product",
+      "label": "mapea",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "db-postgres",
+      "from": "dbcontext",
+      "to": "postgres",
+      "label": "Npgsql",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Dentro del slice",
+      "items": [
+        "Endpoint, DTOs, validación, lógica y acceso a datos",
+        "422 líneas para los cinco casos de uso completos"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Fuera, y por qué",
+      "items": [
+        "Product: un solo esquema exige una sola entidad",
+        "Common/: el pipeline lo atraviesan los cinco por igual"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "La asimetría es el mensaje",
+      "items": [
+        "5 archivos con validador, 4 sin él, 3 en DeleteProduct",
+        "Borra una carpeta y el resto sigue compilando"
+      ]
+    }
+  ]
+}

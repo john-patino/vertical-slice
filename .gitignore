@@ -24,3 +24,10 @@ dist/
 
 # Descargas incompletas del navegador
 *.crdownload
+
+# Evidencia de verificación de Archify (capturas y recibos)
+docs/*.visual-check.*
+
+# Archivos temporales de Word
+~WRL*.tmp
+~$*.doc*
