@@ -53,6 +53,8 @@
    - [Qué Probar con Rigor y Qué Evitar Sobreprobar](#qué-probar-con-rigor-y-qué-evitar-sobreprobar)
 9. [Matriz Comparativa de Enfoques Arquitectónicos](#9-matriz-comparativa-de-enfoques-arquitectónicos)
 10. [Modelo C4 y Documentación Visual](#10-modelo-c4-y-documentación-visual)
+    - [Resumen de los 4 Niveles en este Proyecto](#resumen-de-los-4-niveles-en-este-proyecto)
+    - [Diagramas del Flujo de Ejecución (¿Cuál Consultar?)](#diagramas-del-flujo-de-ejecución-cuál-consultar)
 11. [Talleres Prácticos y Guía de Laboratorio](#11-talleres-prácticos-y-guía-de-laboratorio)
     - [Taller 1: El Test de Eliminabilidad en Vivo](#taller-1-el-test-de-eliminabilidad-en-vivo)
     - [Taller 2: El Experimento del Cambio Divergente](#taller-2-el-experimento-del-cambio-divergente)
@@ -749,6 +751,28 @@ docs/
    - El bloque transversal `Common` (`IEndpoint`, `ValidationBehavior`, `ExceptionHandler`).
    - El bloque de persistencia compartida `Persistence` (`AppDbContext`, `Product`).
 4. **Nivel 4 (Código):** Desglosa la anatomía microscópica de un slice (`CreateProduct`): relación entre `CreateProductEndpoint`, `CreateProductRequest`, `CreateProductValidator`, `CreateProductHandler` y `CreateProductResponse`.
+
+### Diagramas del Flujo de Ejecución (¿Cuál Consultar?)
+
+Para estudiar cómo viaja y se procesa una petición a través de la arquitectura, dispones de dos diagramas complementarios según el nivel de granularidad deseado:
+
+1. **Flujo de Ejecución Detallado a Nivel de Código y Caso de Uso (Nivel Micro):**
+   - 🖼️ **[`docs/c4-nivel4-crear-producto.png`](docs/c4-nivel4-crear-producto.png)**: Ilustra la secuencia exacta de pasos internos dentro del slice `CreateProduct`:
+     1. `CreateProductEndpoint` recibe el payload HTTP y lo mapea al Command/Request.
+     2. `CreateProductHandler` toma el control y delega la validación sintáctica a `CreateProductValidator`.
+     3. Si es válido, se instancia la entidad de dominio `Product`.
+     4. Se persiste directamente mediante `AppDbContext` ejecutando sentencias SQL en PostgreSQL.
+     5. Se construye el DTO de salida `CreateProductResponse` y se retorna la respuesta HTTP al cliente.
+
+2. **Flujo de Ejecución Arquitectónico a Nivel de Componentes (Nivel Macro):**
+   - 🖼️ **[`docs/c4-nivel3.png`](docs/c4-nivel3.png)**: Muestra el recorrido transversal de cualquier solicitud a través de las capas y contenedores del sistema:
+     - **Cliente React SPA** $\rightarrow$ Envío de solicitudes HTTP/REST.
+     - **API Router / Endpoints** $\rightarrow$ Recepción, validación inicial y desempaquetado de la petición.
+     - **Despachador / Mediador (MediatR)** $\rightarrow$ Enrutamiento en memoria hacia el slice específico.
+     - **Vertical Slices Autónomos** $\rightarrow$ Cada slice (`ListProducts`, `CreateProduct`, `UpdateProductStock`, etc.) procesa la lógica de forma encapsulada.
+     - **Base de Datos PostgreSQL** $\rightarrow$ Ejecución directa de sentencias SQL (`INSERT`, `SELECT`, `UPDATE`, `DELETE`).
+
+> 💡 **Visualizador Interactivo:** Puedes abrir en tu navegador el archivo **[`docs/arquitectura-vertical-slice.html`](docs/arquitectura-vertical-slice.html)** y seleccionar la vista **"Un slice completo"** para ver resaltado de forma dinámica e interactiva todo el camino de ejecución desde la interfaz web hasta la base de datos.
 
 ---
 
